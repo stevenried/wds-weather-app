@@ -1,7 +1,5 @@
 import axios from 'axios'
 
-// https://api.open-meteo.com/v1/forecast?hourly=temperature_2m,apparent_temperature,precipitation,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timeformat=unixtime
-
 export default function getWeather(lat, long, tz) {
   return axios
     .get(
@@ -17,8 +15,8 @@ export default function getWeather(lat, long, tz) {
     .then(({ data }) => {
       return {
         current: parseCurrentWeather(data),
-        // daily: parseDailyWeather(data),
-        // hourly: parseHourlyWeather(data),
+        daily: parseDailyWeather(data),
+        hourly: parseHourlyWeather(data),
       }
     })
 }
@@ -50,6 +48,27 @@ function parseCurrentWeather({ current_weather, daily }) {
   }
 }
 
-function parseDailyWeather({}) {}
+function parseDailyWeather({ daily }) {
+  return daily.time.map((time, idx) => {
+    return {
+      timeStamp: time * 1000,
+      iconCode: daily.weathercode[idx],
+      maxTemp: Math.round(daily.temperature_2m_max[idx]),
+    }
+  })
+}
 
-function parseHourlyWeather({}) {}
+function parseHourlyWeather({ hourly, current_weather }) {
+  return hourly.time
+    .map((time, idx) => {
+      return {
+        timeStamp: time * 1000,
+        iconCode: hourly.weathercode[idx],
+        temp: Math.round(hourly.temperature_2m[idx]),
+        flTemp: Math.round(hourly.apparent_temperature[idx]),
+        wind: Math.round(hourly.windspeed_10m[idx]),
+        precip: Math.round(hourly.precipitation[idx] * 100) / 100,
+      }
+    })
+    .filter(({ timeStamp }) => timeStamp >= current_weather.time * 1000)
+}
